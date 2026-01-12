@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二崙國小定期評量時程</title>
+    <style>
+        /* --- 全域設定 --- */
+        :root {
+            /* 分離左右背景變數 */
+            --left-bg-color: #ffffff;
+            --right-bg-color: #fdf6e3;
+            
+            --panel-bg: #ffffff;
+            --primary-red: #e74c3c;
+            --primary-green: #2ecc71;
+            --primary-blue: #3498db; 
+            --border-color: #ddd;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background-color: var(--right-bg-color); /* Body 跟隨右側背景 */
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            transition: background-color 0.3s;
+        }
+
+        /* --- 色票彈窗樣式 (New) --- */
+        .palette-popup {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none; /* 預設隱藏 */
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 140px;
+        }
+        
+        .palette-popup.show {
+            display: grid;
+        }
+
+        .color-swatch {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid #eee;
+            cursor: pointer;
+            transition: transform 0.1s, border-color 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+            border-color: #aaa;
+        }
+
+        .custom-color-btn {
+            grid-column: span 3;
+            margin-top: 5px;
+            padding: 5px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+        }
+        .custom-color-btn:hover { background: #e0e0e0; }
+
+
+        /* --- P1優化: 當前科目高亮動畫 --- */
+        @keyframes pulse-border {
+            0% { box-shadow: inset 0 0 0 2px rgba(231, 76, 60, 0.2); }
+            50% { box-shadow: inset 0 0 0 4px rgba(231, 76, 60, 0.8); background-color: rgba(255, 245, 230, 0.5); }
+            100% { box-shadow: inset 0 0 0 2px rgba(231, 76, 60, 0.2); }
+        }
+
+        .active-exam-row {
+            animation: pulse-border 2s infinite;
+            position: relative;
+            z-index: 5;
+            border-left: 5px solid var(--primary-red) !important;
+        }
+
+        /* --- P0優化: 手機響應式設定 --- */
+        @media (max-width: 768px) {
+            body {
+                overflow: auto; 
+                flex-direction: column;
+                height: auto; 
+            }
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            .left-panel, .right-panel {
+                width: 100%;
+                height: auto;
+                min-height: 50vh;
+                border-right: none;
+                border-bottom: 2px solid #e0e0e0;
+                padding: 10px; 
+            }
+            .header-controls {
+                justify-content: space-between;
+            }
+            h1 { font-size: 20px; width: 100%; margin-bottom: 10px; }
+            .btn { padding: 8px; font-size: 13px; }
+            
+            th, td { padding: 6px 2px; font-size: 14px; }
+            .manage-btns button { padding: 4px; font-size: 12px; }
+            .time-input-group { flex-direction: column; gap: 2px; }
+        }
+
+        /* --- 通用遮罩樣式 (登入 & 使用者管理) --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(253, 246, 227, 0.95);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-overlay.hidden { display: none; }
+
+        .login-box, .modal-box {
+            background: white;
+            padding: 30px; 
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 90%; 
+            max-width: 350px;
+            text-align: center;
+            border-top: 5px solid var(--primary-green);
+            position: relative;
+        }
+        
+        .modal-box.wide { max-width: 600px; }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .modal-close:hover { color: #333; }
+
+        .login-title, .modal-title {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 25px;
+            font-weight: bold;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box; 
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-green);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: background 0.3s;
+        }
+
+        .login-btn:hover { background-color: #27ae60; }
+
+        .guest-btn {
+            background-color: transparent;
+            color: #7f8c8d;
+            border: 1px solid #ddd;
+        }
+
+        .guest-btn:hover { background-color: #f5f5f5; color: #333; }
+        
+        .error-msg {
+            color: var(--primary-red);
+            font-size: 14px;
+            margin-bottom: 15px;
+            min-height: 20px;
+        }
+        
+        /* --- 使用者管理表格樣式 --- */
+        .user-list-table {
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .user-list-table th, .user-list-table td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+        .user-list-table th { color: #555; background-color: #f9f9f9; }
+        
+        .new-user-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            align-items: center;
+        }
+        .new-user-form input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 30%;
+        }
+
+        /* --- 權限控制 Class --- */
+        .hidden { display: none !important; }
+        
+        body.guest-mode .admin-only {
+            display: none !important;
+        }
+        body.guest-mode .input-disabled-look {
+            background: transparent;
+            border: none;
+            color: #333;
+            pointer-events: none; 
+        }
+
+        /* --- 佈局 --- */
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 調整左右欄比例：左欄加寬 (flex: 3)，右欄縮減 (flex: 2) */
+        .left-panel {
+            flex: 3;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+            border-right: 2px solid #e0e0e0;
+            background: var(--left-bg-color); 
+            transition: background-color 0.3s;
+        }
+
+        .right-panel {
+            flex: 2;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+            background-color: var(--right-bg-color); 
+            transition: background-color 0.3s;
+        }
+
+        /* --- 左側：表格與控制列 --- */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            color: #d81b60;
+            margin: 0;
+            font-size: 24px;
+            margin-right: 20px;
+        }
+
+        .btn {
+            border: 1px solid #ccc;
+            background: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .btn:hover:not(:disabled) { background: #f5f5f5; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn.green { background: var(--primary-green); color: white; border: none; }
+        .btn.orange { background: #f39c12; color: white; border: none; }
+        .btn.red { background: var(--primary-red); color: white; border: none; }
+        .btn.blue { background: var(--primary-blue); color: white; border: none; } 
+        .btn-group { display: flex; gap: 2px; }
+
+        input[type="color"] {
+            visibility: hidden;
+            width: 0;
+            height: 0;
+            padding: 0;
+            border: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.5); /* 讓背景色透出來一點 */
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: rgba(249, 249, 249, 0.9);
+            font-weight: bold;
+            color: #555;
+        }
+
+        /* 時間輸入優化 */
+        .time-input-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .time-part-input {
+            width: auto;
+            padding: 4px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            background: #f9f9f9;
+            font-family: monospace;
+            text-align: center;
+            cursor: pointer;
+        }
+        .time-part-input:focus { border: 1px solid var(--primary-green); outline: none; background: white; }
+        
+        .subject-input {
+            width: 90%;
+            padding: 5px;
+            border: 1px solid transparent;
+            text-align: center;
+            background: transparent;
+            font-size: 16px; 
+        }
+        .subject-input:focus { border: 1px solid #aaa; outline: none; }
+        .subject-input:disabled { color: inherit; -webkit-text-fill-color: inherit; opacity: 1; }
+        
+        .row-highlight { color: var(--primary-red); font-weight: bold; }
+
+        /* 能量條 (Progress Bar) 優化 */
+        .energy-bar-container {
+            width: 100%;
+            height: 24px; 
+            background-color: #eee;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .energy-bar-fill {
+            height: 100%;
+            background-color: #bdc3c7; 
+            width: 0%;
+            transition: width 1s linear, background-color 0.3s;
+        }
+
+        .countdown-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px; /* 加大倒數文字 */
+            font-weight: bold;
+            color: #333;
+            text-shadow: 0 0 2px rgba(255,255,255,0.8);
+            pointer-events: none; 
+            z-index: 2;
+        }
+
+        .manage-btns .btn-sm {
+            padding: 4px 8px;
+            margin: 0 2px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .manage-btns .btn-del { 
+            color: var(--primary-red); 
+            border-color: #fadbd8;
+            background-color: #fdedec;
+        }
+        .manage-btns .btn-del:hover {
+            background-color: #fadbd8;
+        }
+
+        /* --- 右側：小工具區 --- */
+        .widget-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .draggable {
+            position: absolute;
+            cursor: move;
+            box-shadow: var(--shadow);
+            user-select: none;
+            z-index: 10;
+        }
+        .draggable.locked { cursor: default; } 
+
+        .close-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 18px;
+            font-size: 14px;
+            cursor: pointer;
+            display: none; 
+            z-index: 20;
+        }
+        .draggable:hover .close-btn { display: block; }
+        .draggable.locked:hover .close-btn { display: none !important; }
+
+        .sticky-note {
+            width: 200px;
+            height: 200px;
+            background: #fff7d1;
+            border-radius: 5px 5px 20px 5px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sticky-note textarea {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            resize: none;
+            font-size: 16px;
+            outline: none;
+        }
+        .sticky-note textarea:disabled { color: black; }
+
+        .bulletin-board {
+            width: 220px;
+            min-height: 150px;
+            background: white;
+            border-left: 5px solid var(--primary-red);
+            border-radius: 5px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .bulletin-title { font-weight: bold; color: var(--primary-red); border-bottom: 1px solid #eee; margin-bottom: 5px; outline: none;}
+        .bulletin-content { flex: 1; outline: none; min-height: 100px; }
+
+        .digital-clock {
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 24px;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        .clock-white { background: white; color: #333; }
+        .clock-black { background: #333; color: #0f0; }
+
+        /* --- 時尚指針時鐘設計 (New) --- */
+        .analog-clock {
+            width: 200px;
+            height: 200px;
+            background: #fcfcfc;
+            border-radius: 50%;
+            /* 模擬金屬邊框與陰影 */
+            border: 8px solid #4a4a4a;
+            box-shadow: 
+                0 0 0 2px #d6d6d6, /* 外圈亮邊 */
+                inset 0 0 20px rgba(0,0,0,0.1), /* 內部深度 */
+                0 10px 20px rgba(0,0,0,0.2); /* 懸浮陰影 */
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 品牌字樣 */
+        .clock-branding {
+            position: absolute;
+            top: 25%;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #999;
+            font-family: "Arial", sans-serif;
+            font-weight: bold;
+            z-index: 1;
+        }
+
+        /* 刻度線 */
+        .clock-marker {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            /* 透過漸層只顯示頭尾的刻度 */
+            background: transparent;
+            pointer-events: none;
+        }
+        
+        /* 整點刻度 (粗) */
+        .marker-hour::before, .marker-hour::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 12px;
+            background: #333;
+            left: -1px;
+        }
+        .marker-hour::before { top: 6px; }
+        .marker-hour::after { bottom: 6px; }
+
+        /* 分鐘刻度 (細) */
+        .marker-minute::before, .marker-minute::after {
+            content: '';
+            position: absolute;
+            width: 1px;
+            height: 6px;
+            background: #999;
+            left: 0.5px;
+        }
+        .marker-minute::before { top: 6px; }
+        .marker-minute::after { bottom: 6px; }
+
+        /* 通用指針設定 */
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+
+        /* 時針 */
+        .hour-hand {
+            width: 6px;
+            height: 55px; /* 縮短 */
+            background: #2c3e50;
+            transform: translateX(-50%);
+            /* 劍形指針設計 */
+            clip-path: polygon(50% 0%, 100% 20%, 100% 100%, 0% 100%, 0% 20%);
+        }
+
+        /* 分針 */
+        .min-hand {
+            width: 4px;
+            height: 80px;
+            background: #34495e;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+        /* 秒針 */
+        .sec-hand {
+            width: 2px;
+            height: 90px;
+            background: #e74c3c;
+            transform: translateX(-50%);
+            transform-origin: 50% 80%; /* 重心偏移 */
+            bottom: calc(50% - 18px); /* 18px = 20% of 90px (尾巴長度) */
+            z-index: 3;
+        }
+        
+        /* 秒針尾端平衡錘 */
+        .sec-hand::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #e74c3c;
+            border-radius: 50%;
+            top: 80%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* 中心蓋 */
+        .clock-center-cap {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #333; /* 金屬質感 */
+            border: 2px solid #e74c3c;
+            border-radius: 50%;
+            z-index: 4;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        /* --- 分頁樣式 (New) --- */
+        .tabs-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .tab-btn {
+            padding: 8px 20px;
+            border: 1px solid #ddd;
+            background: #f0f0f0;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            font-weight: bold;
+            color: #555;
+            transition: all 0.2s;
+            border-bottom: none;
+        }
+        
+        .tab-btn.active {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+        
+        .tab-btn:hover:not(.active) {
+            background: #e0e0e0;
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- 登入遮罩 -->
+<div id="loginOverlay" class="modal-overlay">
+    <div class="login-box">
+        <div class="login-title">二崙國小定期評量時程</div>
+        <div class="error-msg" id="loginError"></div>
+        <div class="error-msg" id="loadingMsg" style="color: #2ecc71; display:none;">正在從雲端載入設定...</div>
+        
+        <div class="input-group">
+            <label>帳號</label>
+            <input type="text" id="usernameInput" placeholder="例如: admin">
+        </div>
+        <div class="input-group">
+            <label>密碼</label>
+            <input type="password" id="passwordInput" placeholder="請輸入密碼">
+        </div>
+        
+        <button class="login-btn" onclick="handleLogin()">登入</button>
+        <button class="login-btn guest-btn" onclick="handleGuestLogin()">訪客登入 (免密碼)</button>
+    </div>
+</div>
+
+<!-- 使用者管理彈窗 (New) -->
+<div id="userMgmtOverlay" class="modal-overlay hidden">
+    <div class="modal-box wide">
+        <span class="modal-close" onclick="closeUserManagement()">×</span>
+        <div class="modal-title">帳號管理</div>
+        
+        <table class="user-list-table">
+            <thead>
+                <tr>
+                    <th>帳號</th>
+                    <th>姓名</th>
+                    <th style="text-align:center;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="userListBody">
+                <!-- JS 填充 -->
+            </tbody>
+        </table>
+
+        <div class="new-user-form">
+            <input type="text" id="newUsername" placeholder="新帳號" autocomplete="off">
+            <input type="text" id="newRealname" placeholder="姓名/職稱" autocomplete="off">
+            <input type="password" id="newPassword" placeholder="密碼" autocomplete="off">
+            <button class="btn green" style="width: auto; padding: 8px 12px;" onclick="addNewUser()">+ 新增</button>
+        </div>
+    </div>
+</div>
+
+<!-- 背景色票彈窗 -->
+<div id="palettePopup" class="palette-popup">
+    <!-- JS 會在此填充色票 -->
+</div>
+
+<!-- 文字色票彈窗 (New) -->
+<div id="textColorPopup" class="palette-popup">
+    <!-- JS 會在此填充色票 -->
+</div>
+
+<div class="container">
+    <!-- 左側：時程表 -->
+    <div class="left-panel">
+        <div class="header-controls">
+            <h1>二崙國小定期評量時程</h1>
+            
+            <div class="btn-group admin-only">
+                <button class="btn style-btn" onclick="toggleBold()" title="粗體">B</button>
+                <!-- 修改：開啟文字色票彈窗 -->
+                <button class="btn style-btn" onclick="openTextColorPalette(this)" title="文字顏色">A</button>
+                <!-- 隱藏原生選色器，供彈窗自訂使用 -->
+                <input type="color" id="textColorPicker" onchange="changeTextColor(this.value)" style="display:none;">
+            </div>
+            
+            <button class="btn edit-btn admin-only" onclick="addNewRow()">+新增</button>
+            
+            <div class="btn-group admin-only">
+                <button class="btn style-btn" onclick="adjustFontSize(2)" title="放大字體">A+</button>
+                <button class="btn style-btn" onclick="adjustFontSize(-2)" title="縮小字體">A-</button>
+            </div>
+            
+            <button id="soundBtn" class="btn" onclick="toggleSound()">🔇 音效關</button>
+
+            <button class="btn blue admin-only" onclick="exportData()">📤 匯出</button>
+            <button class="btn blue admin-only" onclick="document.getElementById('importFile').click()">📥 匯入</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+
+            <!-- 左側背景獨立控制 (使用彈窗) -->
+            <button class="btn admin-only" onclick="openPalette('left', this)">🎨 背景</button>
+            <!-- 隱藏原本的 input，改由彈窗觸發 -->
+            <input type="color" id="leftBgPicker" onchange="changeLeftBackgroundColor(this.value)" value="#ffffff" style="display:none;">
+
+            <button id="lockBtn" class="btn orange admin-only" onclick="toggleLock()">🔓 解鎖中</button>
+            
+            <button class="btn green admin-only" onclick="saveData()">💾 存檔</button>
+            <!-- Google Sheet 雲端存檔 -->
+            <button class="btn blue admin-only" onclick="saveToGoogleSheets()" title="備份至 Google Sheets">☁️ 雲端存檔</button>
+            <button class="btn admin-only" onclick="setGoogleScriptUrl()" title="設定 Google Apps Script 網址" style="padding: 5px;">⚙️</button>
+
+            <button class="btn red admin-only" onclick="resetFactorySettings()">🔄 重置</button>
+            
+            <div style="margin-left:auto;">
+                <button class="btn" onclick="toggleFullscreen()" title="全螢幕模式">📺 全螢幕</button>
+                
+                <!-- 新增：使用者管理按鈕 -->
+                <button class="btn admin-only" onclick="openUserManagement()" title="管理帳號">👥 帳號</button>
+                
+                <button class="btn" id="userInfoBtn" disabled>未登入</button>
+                <button class="btn" onclick="handleLogout()">登出</button>
+            </div>
+        </div>
+
+        <!-- 分頁切換器 -->
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tab-day1" onclick="switchDay('day1')">📅 第一天評量</button>
+            <button class="tab-btn" id="tab-day2" onclick="switchDay('day2')">📅 第二天評量</button>
+        </div>
+
+        <table id="scheduleTable">
+            <thead>
+                <tr>
+                    <th style="width: 15%;">科目</th>
+                    <th style="width: 25%;">時間</th>
+                    <th style="width: 45%;">進度與倒數</th> 
+                    <th class="admin-only" style="width: 15%;">管理</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Javascript 將在此渲染列 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 右側：小工具 -->
+    <div class="right-panel" id="widgetArea">
+        <div class="widget-toolbar admin-only">
+            <button class="btn edit-btn" onclick="createDigitalClock('white')">+數位(白)</button>
+            <button class="btn edit-btn" onclick="createDigitalClock('black')">+數位(黑綠)</button>
+            <button class="btn edit-btn" onclick="createAnalogClock()">+指針時鐘</button>
+            <button class="btn edit-btn" onclick="createStickyNote()">+便利貼</button>
+            <button class="btn edit-btn" onclick="createBulletin()">+公告欄</button>
+            
+            <!-- 右側背景獨立控制 (使用彈窗) -->
+            <button class="btn" onclick="openPalette('right', this)">🎨 背景</button>
+            <input type="color" id="rightBgPicker" onchange="changeRightBackgroundColor(this.value)" value="#fdf6e3" style="display:none;">
+        </div>
+        
+        <!-- 小工具將生成於此 -->
+    </div>
+</div>
+
+<script>
+    // --- 0. 全域配置 ---
+    // 請將您的 Google Apps Script 部署網址填入下方引號中
+    // 例如: "https://script.google.com/macros/s/AKfycbx.../exec"
+    const CONFIG_GAS_URL = "https://script.google.com/macros/s/AKfycbxJVoTl8pqXNde7QUKn39fFP556OBwHeKmO7QfL86spJJPiYIdcRSvomVMCrkIFDXn6/exec"; 
+
+    // --- 1. 權限與登入系統 ---
+    let currentUserRole = null; 
+    let currentUserName = ""; 
+
+    function handleLogin() {
+        const user = document.getElementById('usernameInput').value.trim();
+        const pass = document.getElementById('passwordInput').value.trim();
+        const errorMsg = document.getElementById('loginError');
+
+        const validUser = appState.users.find(u => u.username === user && u.password === pass);
+
+        if (validUser) {
+            setLoginState('admin', validUser.name || user);
+        } else {
+            errorMsg.textContent = "帳號或密碼錯誤";
+            document.getElementById('passwordInput').value = "";
+        }
+    }
+
+    function handleGuestLogin() {
+        setLoginState('guest');
+    }
+
+    function handleLogout() {
+        currentUserRole = null;
+        currentUserName = "";
+        document.getElementById('loginOverlay').classList.remove('hidden');
+        document.getElementById('passwordInput').value = "";
+        document.getElementById('loginError').textContent = "";
+        // 登出時退出全螢幕
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        if(appState.isLocked && currentUserRole === 'admin') toggleLock(); 
+    }
+
+    function setLoginState(role, name = "訪客") {
+        currentUserRole = role;
+        currentUserName = name;
+        const overlay = document.getElementById('loginOverlay');
+        const userInfoBtn = document.getElementById('userInfoBtn');
+        const body = document.body;
+
+        overlay.classList.add('hidden');
+
+        if (role === 'guest') {
+            body.classList.add('guest-mode');
+            userInfoBtn.textContent = "👤 訪客";
+            if (!appState.isLocked) {
+                toggleLock(true);
+            }
+        } else {
+            body.classList.remove('guest-mode');
+            userInfoBtn.textContent = `👤 ${name}`;
+            updateLockUI();
+        }
+        renderTable();
+    }
+    
+    function openUserManagement() {
+        if(currentUserRole !== 'admin') return;
+        document.getElementById('userMgmtOverlay').classList.remove('hidden');
+        renderUserList();
+    }
+    
+    function closeUserManagement() {
+        document.getElementById('userMgmtOverlay').classList.add('hidden');
+    }
+    
+    function renderUserList() {
+        const tbody = document.getElementById('userListBody');
+        tbody.innerHTML = "";
+        
+        appState.users.forEach(user => {
+            const tr = document.createElement('tr');
+            // 判斷是否為預設管理員或自己，如果是則不能刪除，但可以改密碼
+            const isSelf = user.username === document.getElementById('usernameInput').value;
+            const isDefaultAdmin = user.username === 'admin';
+            
+            let actionButtons = `<button class="btn-sm" style="margin-right:5px;" onclick="changeUserPassword('${user.username}')">🔑 修改密碼</button>`;
+            
+            if (isDefaultAdmin && !isSelf) {
+                actionButtons += `<span style="color:#aaa;">--</span>`;
+            } else if (!isDefaultAdmin || !isSelf) {
+                 if(!isDefaultAdmin && user.username !== 'admin') {
+                     actionButtons += `<button class="btn-sm btn-del" onclick="deleteUser('${user.username}')">刪除</button>`;
+                 }
+            }
+            
+            tr.innerHTML = `
+                <td>${user.username}</td>
+                <td>${user.name || '-'}</td>
+                <td style="text-align:center;">${actionButtons}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    
+    function addNewUser() {
+        const u = document.getElementById('newUsername').value.trim();
+        const n = document.getElementById('newRealname').value.trim();
+        const p = document.getElementById('newPassword').value.trim();
+        
+        if(!u || !p) {
+            alert("帳號與密碼為必填！");
+            return;
+        }
+        
+        if(appState.users.some(user => user.username === u)) {
+            alert("此帳號已存在！");
+            return;
+        }
+        
+        appState.users.push({
+            username: u,
+            password: p,
+            name: n,
+            role: 'admin' 
+        });
+        
+        document.getElementById('newUsername').value = "";
+        document.getElementById('newRealname').value = "";
+        document.getElementById('newPassword').value = "";
+        
+        renderUserList();
+        saveData(); 
+        saveToGoogleSheets(); // 自動備份到雲端
+    }
+    
+    function changeUserPassword(username) {
+        const newPass = prompt(`請輸入 ${username} 的新密碼：`);
+        if(newPass) {
+            const user = appState.users.find(u => u.username === username);
+            if(user) {
+                user.password = newPass;
+                alert("密碼已更新！");
+                renderUserList();
+                saveData();
+                saveToGoogleSheets(); // 同步到雲端
+            }
+        }
+    }
+    
+    function deleteUser(username) {
+        if(!confirm(`確定要刪除使用者 ${username} 嗎？`)) return;
+        appState.users = appState.users.filter(u => u.username !== username);
+        renderUserList();
+        saveData(); 
+        saveToGoogleSheets();
+    }
+
+
+    // --- 2. 資料與狀態 ---
+    let appState = {
+        isLocked: false,
+        enableSound: false,
+        leftBgColor: "#ffffff",
+        rightBgColor: "#fdf6e3",
+        gasUrl: CONFIG_GAS_URL || "", // 初始化時優先使用常數
+        users: [
+            { username: 'admin', password: '1234', name: '預設管理員', role: 'admin' }
+        ],
+        currentDay: 'day1',
+        schedules: {
+            day1: [
+                { id: 1, subject: "國語", time: "08:00-09:00", style: { fontSize: 24, bold: true, color: "#000000" } },
+                { id: 2, subject: "數學", time: "09:10-10:10", style: { fontSize: 24, bold: true, color: "#000000" } },
+                { id: 3, subject: "自然", time: "10:30-11:30", style: { fontSize: 24, bold: true, color: "#000000" } }
+            ],
+            day2: [
+                { id: 4, subject: "英語", time: "08:00-09:00", style: { fontSize: 24, bold: true, color: "#000000" } },
+                { id: 5, subject: "社會", time: "09:10-10:10", style: { fontSize: 24, bold: true, color: "#000000" } }
+            ]
+        },
+        widgets: []
+    };
+    
+    let playedAlerts = new Set(); 
+    let audioCtx = null; 
+    let focusedRowId = null;
+
+    // --- 3. 初始化與讀取 ---
+    window.onload = function() {
+        loadData();
+        // 自動嘗試從雲端載入 (如果已有網址)
+        if(appState.gasUrl) {
+            loadFromGoogleSheets(); 
+        }
+        
+        renderTable();
+        renderWidgets();
+        applyGlobalSettings();
+        updateLockUI();
+        updateSoundUI(); 
+        
+        document.addEventListener('click', function(e) {
+            const bgPopup = document.getElementById('palettePopup');
+            const textPopup = document.getElementById('textColorPopup');
+            
+            if (!e.target.closest('#palettePopup') && !e.target.innerText.includes('🎨')) {
+                bgPopup.classList.remove('show');
+            }
+            if (!e.target.closest('#textColorPopup') && e.target.title !== '文字顏色' && e.target.innerText !== 'A') {
+                textPopup.classList.remove('show');
+            }
+        });
+    };
+
+    function switchDay(day) {
+        appState.currentDay = day;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`tab-${day}`).classList.add('active');
+        renderTable();
+    }
+
+    function sortRowsByTime() {
+        const currentRows = appState.schedules[appState.currentDay];
+        currentRows.sort((a, b) => {
+            const timeA = a.time.split('-')[0] || "00:00";
+            const timeB = b.time.split('-')[0] || "00:00";
+            return timeA.localeCompare(timeB);
+        });
+        renderTable();
+    }
+
+    function loadData() {
+        const savedData = localStorage.getItem('examScheduleState');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                
+                if(parsed.bgColor && !parsed.rightBgColor) {
+                    parsed.rightBgColor = parsed.bgColor;
+                    parsed.leftBgColor = "#ffffff";
+                    delete parsed.bgColor;
+                }
+                
+                if (parsed.rows && !parsed.schedules) {
+                    parsed.schedules = {
+                        day1: parsed.rows,
+                        day2: []
+                    };
+                    delete parsed.rows;
+                    parsed.currentDay = 'day1';
+                }
+
+                appState = { ...appState, ...parsed };
+                if(!appState.widgets) appState.widgets = [];
+                if(typeof appState.enableSound === 'undefined') appState.enableSound = false;
+                
+                // 強制優先使用程式碼中的常數網址
+                if (CONFIG_GAS_URL && CONFIG_GAS_URL.trim() !== "") {
+                    appState.gasUrl = CONFIG_GAS_URL;
+                } else if(!appState.gasUrl) {
+                    appState.gasUrl = "";
+                }
+
+                if (!appState.users || appState.users.length === 0) {
+                    appState.users = [{ username: 'admin', password: '1234', name: '預設管理員', role: 'admin' }];
+                }
+                
+            } catch (e) {
+                console.error("讀取存檔失敗", e);
+            }
+        }
+        sortRowsByTime();
+    }
+
+    function saveData() {
+        if(currentUserRole !== 'admin') return;
+        collectWidgetsState();
+        localStorage.setItem('examScheduleState', JSON.stringify(appState));
+        const btn = document.querySelector('.btn.green');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "✅ 已存檔";
+        setTimeout(() => btn.innerHTML = originalText, 1000);
+    }
+    
+    function setGoogleScriptUrl() {
+        if (CONFIG_GAS_URL && CONFIG_GAS_URL.trim() !== "") {
+            const override = confirm("目前使用程式內建的網址。您確定要暫時覆蓋它嗎？\n\n(重新整理網頁後將恢復內建值)");
+            if (!override) return;
+        }
+        const url = prompt("請輸入 Google Apps Script 發布網址 (Web App URL):", appState.gasUrl);
+        if (url !== null) {
+            appState.gasUrl = url.trim();
+            saveData(); 
+            alert("網址已更新！");
+        }
+    }
+
+    async function saveToGoogleSheets() {
+        if (!appState.gasUrl) {
+            // alert("請先設定 Google Apps Script 網址！");
+            // setGoogleScriptUrl();
+            return;
+        }
+
+        collectWidgetsState();
+        const dataPayload = {
+            timestamp: new Date().toLocaleString('zh-TW'),
+            data: JSON.stringify(appState)
+        };
+
+        const btn = document.querySelector('button[onclick="saveToGoogleSheets()"]');
+        if(btn) {
+            var originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ 上傳中...";
+            btn.disabled = true;
+        }
+
+        try {
+            await fetch(appState.gasUrl, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dataPayload)
+            });
+            if(btn) alert("已發送資料至 Google Sheets！");
+        } catch (error) {
+            console.error("Error:", error);
+            if(btn) alert("上傳失敗，請檢查網址或網路連線。");
+        } finally {
+            if(btn) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+    }
+    
+    // 從 Google Sheets 載入資料
+    async function loadFromGoogleSheets() {
+        if (!appState.gasUrl) return;
+        // Check if URL is the placeholder
+        if (appState.gasUrl.includes("your-script-id")) return;
+
+        const loadingMsg = document.getElementById('loadingMsg');
+        if(loadingMsg) loadingMsg.style.display = 'block';
+
+        try {
+            // Add a timestamp to prevent caching
+            const fetchUrl = `${appState.gasUrl}?t=${new Date().getTime()}`;
+            
+            const response = await fetch(fetchUrl, {
+                method: 'GET',
+                redirect: 'follow'
+                // mode: 'cors' is default
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if(result.status === 'success' && result.data) {
+                const cloudData = JSON.parse(result.data);
+                appState = { ...appState, ...cloudData };
+                
+                // Refresh UI
+                applyGlobalSettings();
+                updateLockUI();
+                updateSoundUI();
+                sortRowsByTime();
+                renderTable();
+                renderWidgets();
+                
+                localStorage.setItem('examScheduleState', JSON.stringify(appState));
+                console.log("雲端資料已同步");
+            }
+        } catch (error) {
+            console.error("無法載入雲端資料:", error);
+            // Optionally alert the user, but maybe too annoying on load
+            // document.getElementById('loginError').textContent = "無法連接雲端 (CORS 或 網址錯誤)";
+        } finally {
+            if(loadingMsg) loadingMsg.style.display = 'none';
+        }
+    }
+
+    function resetFactorySettings() {
+        if(confirm("警告：此操作將清除所有設定、課表資料與背景設定，恢復為系統預設值且無法復原。\n\n確定要重置嗎？")) {
+            localStorage.removeItem('examScheduleState');
+            location.reload();
+        }
+    }
+    
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`無法啟用全螢幕模式: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    }
+    
+    function exportData() {
+        collectWidgetsState();
+        
+        // P3: 安全優化 - 複製狀態並移除敏感資料
+        const stateToExport = JSON.parse(JSON.stringify(appState));
+        delete stateToExport.users; // 移除使用者帳號密碼
+        
+        const dataStr = JSON.stringify(stateToExport, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `exam_config_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedState = JSON.parse(e.target.result);
+                if (confirm("確定要匯入此設定檔嗎？這將覆蓋當前的所有設定。")) {
+                    if(importedState.bgColor && !importedState.rightBgColor) {
+                        importedState.rightBgColor = importedState.bgColor;
+                        importedState.leftBgColor = "#ffffff";
+                    }
+                    if (importedState.rows && !importedState.schedules) {
+                        importedState.schedules = { day1: importedState.rows, day2: [] };
+                        delete importedState.rows;
+                        importedState.currentDay = 'day1';
+                    }
+
+                    appState = { ...appState, ...importedState };
+                    
+                    // 匯入時也優先使用常數網址
+                    if (CONFIG_GAS_URL && CONFIG_GAS_URL.trim() !== "") {
+                        appState.gasUrl = CONFIG_GAS_URL;
+                    }
+
+                    applyGlobalSettings();
+                    updateLockUI();
+                    updateSoundUI();
+                    sortRowsByTime(); 
+                    renderTable();
+                    renderWidgets();
+                    saveData(); 
+                    alert("匯入成功！");
+                }
+            } catch (err) {
+                alert("檔案格式錯誤，匯入失敗。");
+                console.error(err);
+            }
+            input.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function collectWidgetsState() {
+        const widgetElements = document.querySelectorAll('.draggable');
+        appState.widgets = []; 
+        widgetElements.forEach(el => {
+            const left = el.style.left;
+            const top = el.style.top;
+            const type = el.dataset.type;
+            let content = "";
+            let contentTitle = "";
+            if (type === 'sticky') {
+                content = el.querySelector('textarea').value;
+            } else if (type === 'bulletin') {
+                content = el.querySelector('.bulletin-content').innerHTML;
+                contentTitle = el.querySelector('.bulletin-title').innerHTML;
+            }
+            appState.widgets.push({
+                id: el.dataset.id,
+                type: type,
+                left: left,
+                top: top,
+                content: content,
+                contentTitle: contentTitle
+            });
+        });
+    }
+
+    // --- 3. 渲染與邏輯 ---
+
+    function renderTable() {
+        const tbody = document.querySelector("#scheduleTable tbody");
+        tbody.innerHTML = "";
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`tab-${appState.currentDay}`).classList.add('active');
+
+        const currentRows = appState.schedules[appState.currentDay] || [];
+
+        currentRows.forEach((row, index) => {
+            const tr = document.createElement("tr");
+            tr.dataset.id = row.id;
+            tr.id = `row-${row.id}`; 
+            
+            const styleString = `
+                font-size: ${row.style.fontSize}px; 
+                font-weight: ${row.style.bold ? 'bold' : 'normal'}; 
+                color: ${row.style.color};
+            `;
+            
+            const isDisabled = appState.isLocked || currentUserRole === 'guest';
+            const disabledClass = isDisabled ? 'input-disabled-look' : '';
+
+            const timeParts = row.time.split('-');
+            const startTime = timeParts[0] || "00:00";
+            const endTime = timeParts[1] || "00:00";
+
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="subject-input ${disabledClass}" value="${row.subject}" 
+                        style="${styleString}"
+                        onchange="updateRowData(${row.id}, 'subject', this.value)"
+                        onfocus="setFocusedRow(${row.id})"
+                        ${isDisabled ? 'disabled' : ''}
+                    >
+                </td>
+                <td>
+                    <div class="time-input-group">
+                        <input type="time" class="time-part-input ${disabledClass}" value="${startTime}"
+                             onchange="updateTimePart(${row.id}, 'start', this.value)"
+                             ${isDisabled ? 'disabled' : ''}
+                        >
+                        <span>-</span>
+                        <input type="time" class="time-part-input ${disabledClass}" value="${endTime}"
+                             onchange="updateTimePart(${row.id}, 'end', this.value)"
+                             ${isDisabled ? 'disabled' : ''}
+                        >
+                    </div>
+                </td>
+                <td>
+                    <div class="energy-bar-container">
+                        <div class="energy-bar-fill" id="bar-${row.id}"></div>
+                        <span class="countdown-text" id="countdown-${row.id}">未開始</span>
+                    </div>
+                </td>
+                <td class="manage-btns admin-only">
+                    ${appState.isLocked ? '<span style="color:#aaa;">🔒 鎖定中</span>' : 
+                    `<button class="btn-sm btn-del" onclick="deleteRow(${row.id})" title="刪除此科目">🗑️ 刪除</button>`}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        updateProgressBars();
+    }
+
+    function renderWidgets() {
+        const widgetArea = document.getElementById('widgetArea');
+        const existing = widgetArea.querySelectorAll('.draggable');
+        existing.forEach(e => e.remove());
+        appState.widgets.forEach(w => { restoreWidget(w); });
+    }
+
+    function addNewRow() {
+        if(appState.isLocked || currentUserRole !== 'admin') return;
+        const newId = Date.now();
+        appState.schedules[appState.currentDay].push({ 
+            id: newId, 
+            subject: "新科目", 
+            time: "08:00-09:00", 
+            style: { fontSize: 24, bold: true, color: "#000000" }
+        });
+        sortRowsByTime(); 
+    }
+
+    function deleteRow(id) {
+        if(appState.isLocked || currentUserRole !== 'admin') return;
+        if(confirm("確定刪除此科目？此操作無法復原。")) {
+            appState.schedules[appState.currentDay] = appState.schedules[appState.currentDay].filter(item => item.id !== id);
+            renderTable();
+        }
+    }
+
+    function updateTimePart(id, part, value) {
+        if(currentUserRole === 'guest') return;
+        const item = appState.schedules[appState.currentDay].find(d => d.id === id);
+        if(!item) return;
+
+        const currentParts = item.time.split('-');
+        let start = currentParts[0] || "00:00";
+        let end = currentParts[1] || "00:00";
+
+        if(part === 'start') start = value;
+        if(part === 'end') end = value;
+
+        item.time = `${start}-${end}`;
+        
+        playedAlerts.delete(`${id}-prep`);
+        playedAlerts.delete(`${id}-end`);
+        playedAlerts.delete(`${id}-2min-reminder`);
+        
+        sortRowsByTime();
+    }
+
+    function updateRowData(id, field, value) {
+        if(currentUserRole === 'guest') return;
+        const item = appState.schedules[appState.currentDay].find(d => d.id === id);
+        if(item) item[field] = value;
+    }
+
+    // --- 4. 樣式控制邏輯 ---
+    function setFocusedRow(id) { focusedRowId = id; }
+    function toggleBold() {
+        if(appState.isLocked || !focusedRowId || currentUserRole !== 'admin') return;
+        const item = appState.schedules[appState.currentDay].find(d => d.id === focusedRowId);
+        if(item) { item.style.bold = !item.style.bold; renderTable(); }
+    }
+    
+    function openTextColorPalette(btnElement) {
+        if(appState.isLocked || currentUserRole !== 'admin') return;
+        const popup = document.getElementById('textColorPopup');
+        const textColors = ['#000000', '#333333', '#e74c3c', '#3498db', '#2ecc71', '#e67e22', '#9b59b6', '#34495e', '#795548'];
+        let html = '';
+        textColors.forEach(color => {
+            html += `<div class="color-swatch" style="background-color: ${color};" onclick="applyTextColorFromPalette('${color}')"></div>`;
+        });
+        html += `<div class="custom-color-btn" onclick="document.getElementById('textColorPicker').click(); document.getElementById('textColorPopup').classList.remove('show');">自訂...</div>`;
+        popup.innerHTML = html;
+        const rect = btnElement.getBoundingClientRect();
+        popup.style.top = (rect.bottom + 5) + 'px';
+        popup.style.left = rect.left + 'px';
+        popup.classList.add('show');
+        event.stopPropagation();
+    }
+
+    function applyTextColorFromPalette(color) {
+        changeTextColor(color);
+        document.getElementById('textColorPopup').classList.remove('show');
+    }
+
+    function changeTextColor(color) {
+        if(appState.isLocked || !focusedRowId || currentUserRole !== 'admin') return;
+        const item = appState.schedules[appState.currentDay].find(d => d.id === focusedRowId);
+        if(item) { item.style.color = color; renderTable(); }
+    }
+    
+    function adjustFontSize(delta) {
+        if(appState.isLocked || !focusedRowId || currentUserRole !== 'admin') return;
+        const item = appState.schedules[appState.currentDay].find(d => d.id === focusedRowId);
+        if(item) {
+            let newSize = item.style.fontSize + delta;
+            if(newSize < 10) newSize = 10;
+            if(newSize > 40) newSize = 40;
+            item.style.fontSize = newSize;
+            renderTable();
+        }
+    }
+    
+    let currentPickerSide = 'left';
+
+    function openPalette(side, btnElement) {
+        if(appState.isLocked || currentUserRole !== 'admin') return;
+        
+        currentPickerSide = side;
+        const popup = document.getElementById('palettePopup');
+        
+        const themeColors = ['#fdf6e3', '#ffffff', '#fff0f5', '#eaf2f8', '#e8f8f5', '#f4ecf7'];
+
+        let html = '';
+        themeColors.forEach(color => {
+            html += `<div class="color-swatch" style="background-color: ${color};" onclick="applyColor('${color}')"></div>`;
+        });
+        html += `<div class="custom-color-btn" onclick="openNativePicker()">自訂...</div>`;
+        
+        popup.innerHTML = html;
+        
+        const rect = btnElement.getBoundingClientRect();
+        popup.style.top = (rect.bottom + 5) + 'px';
+        popup.style.left = rect.left + 'px';
+        popup.classList.add('show');
+        
+        event.stopPropagation();
+    }
+
+    function applyColor(color) {
+        if(currentPickerSide === 'left') {
+            changeLeftBackgroundColor(color);
+        } else {
+            changeRightBackgroundColor(color);
+        }
+        document.getElementById('palettePopup').classList.remove('show');
+    }
+
+    function openNativePicker() {
+        if(currentPickerSide === 'left') {
+            document.getElementById('leftBgPicker').click();
+        } else {
+            document.getElementById('rightBgPicker').click();
+        }
+        document.getElementById('palettePopup').classList.remove('show');
+    }
+
+    function changeLeftBackgroundColor(color) {
+        if(appState.isLocked || currentUserRole !== 'admin') return;
+        appState.leftBgColor = color;
+        applyGlobalSettings();
+    }
+
+    function changeRightBackgroundColor(color) {
+        if(appState.isLocked || currentUserRole !== 'admin') return;
+        appState.rightBgColor = color;
+        applyGlobalSettings();
+    }
+
+    function applyGlobalSettings() {
+        document.documentElement.style.setProperty('--left-bg-color', appState.leftBgColor);
+        document.documentElement.style.setProperty('--right-bg-color', appState.rightBgColor);
+        document.getElementById('leftBgPicker').value = appState.leftBgColor;
+        document.getElementById('rightBgPicker').value = appState.rightBgColor;
+    }
+
+    // --- 5. 鎖定與音效邏輯 ---
+    function toggleLock(forceState = null) {
+        if (currentUserRole !== 'admin' && forceState === null) return;
+        if (forceState !== null) {
+            updateLockUI(forceState);
+            if(currentUserRole === 'guest') {
+                renderTable();
+                updateWidgetLockState(true);
+            }
+            return;
+        }
+        appState.isLocked = !appState.isLocked;
+        updateLockUI();
+        renderTable(); 
+        updateWidgetLockState(appState.isLocked);
+    }
+    function updateWidgetLockState(isLocked) {
+        const widgets = document.querySelectorAll('.draggable');
+        widgets.forEach(w => {
+            if(isLocked) w.classList.add('locked');
+            else w.classList.remove('locked');
+            const inputs = w.querySelectorAll('textarea, [contenteditable]');
+            inputs.forEach(i => {
+                if(i.tagName === 'TEXTAREA') i.disabled = isLocked;
+                else i.contentEditable = !isLocked;
+            });
+        });
+    }
+    function updateLockUI(forceState = null) {
+        const btn = document.getElementById('lockBtn');
+        const styleBtns = document.querySelectorAll('.style-btn');
+        const editBtns = document.querySelectorAll('.edit-btn');
+        const locked = forceState !== null ? forceState : appState.isLocked;
+        if (locked) {
+            btn.innerHTML = "🔒 已鎖定";
+            btn.className = "btn red admin-only";
+            styleBtns.forEach(b => b.disabled = true);
+            editBtns.forEach(b => b.disabled = true);
+        } else {
+            btn.innerHTML = "🔓 解鎖中";
+            btn.className = "btn orange admin-only";
+            styleBtns.forEach(b => b.disabled = false);
+            editBtns.forEach(b => b.disabled = false);
+        }
+    }
+    
+    function toggleSound() {
+        appState.enableSound = !appState.enableSound;
+        updateSoundUI();
+        if(appState.enableSound && !audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if(appState.enableSound && audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+    
+    function updateSoundUI() {
+        const btn = document.getElementById('soundBtn');
+        if(appState.enableSound) {
+            btn.innerHTML = "🔊 音效開";
+            btn.classList.add("green");
+        } else {
+            btn.innerHTML = "🔇 音效關";
+            btn.classList.remove("green");
+        }
+    }
+
+    function playAlert(type) {
+        if(!appState.enableSound || !audioCtx) return;
+        
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        if (type === 'prep') {
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.2);
+            
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(880, audioCtx.currentTime + 0.3);
+            gain2.gain.setValueAtTime(0.1, audioCtx.currentTime + 0.3);
+            osc2.start(audioCtx.currentTime + 0.3);
+            osc2.stop(audioCtx.currentTime + 0.5);
+            
+        } else if (type === 'end') {
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 2);
+        }
+    }
+
+    // --- 7. 時間計算、倒數文字與音效觸發 ---
+    function updateProgressBars() {
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+        const currentRows = appState.schedules[appState.currentDay] || [];
+
+        currentRows.forEach(row => {
+            const bar = document.getElementById(`bar-${row.id}`);
+            const textSpan = document.getElementById(`countdown-${row.id}`);
+            const tr = document.getElementById(`row-${row.id}`); 
+            
+            if(!bar || !textSpan || !tr) return;
+
+            const parts = row.time.split("-");
+            if(parts.length !== 2) return;
+            const startParts = parts[0].split(":");
+            const endParts = parts[1].split(":");
+            if(startParts.length < 2 || endParts.length < 2) return;
+
+            const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+            const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+            const totalDuration = endMinutes - startMinutes;
+
+            let statusText = "";
+
+            if (currentMinutes < startMinutes) {
+                bar.style.width = "0%";
+                bar.style.backgroundColor = "#bdc3c7";
+                const minsToStart = startMinutes - currentMinutes;
+                statusText = `⏳ 還有 ${minsToStart} 分鐘開始`;
+                textSpan.style.color = "#555";
+                tr.classList.remove('active-exam-row'); 
+            } else if (currentMinutes >= endMinutes) {
+                bar.style.width = "100%";
+                bar.style.backgroundColor = "#95a5a6";
+                statusText = "🏁 考試結束";
+                textSpan.style.color = "white";
+                tr.classList.remove('active-exam-row'); 
+                
+                const alertKey = `${row.id}-end`;
+                if (!playedAlerts.has(alertKey)) {
+                    if(currentMinutes === endMinutes) {
+                        playAlert('end');
+                    }
+                    playedAlerts.add(alertKey);
+                }
+                
+            } else {
+                const elapsed = currentMinutes - startMinutes;
+                const percent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+                bar.style.width = percent + "%";
+                
+                tr.classList.add('active-exam-row');
+
+                const remaining = endMinutes - currentMinutes;
+                statusText = `🔥 剩餘 ${remaining} 分鐘`;
+                textSpan.style.color = "black";
+
+                if (remaining <= 5) {
+                    const alertKey = `${row.id}-prep`;
+                    if (!playedAlerts.has(alertKey)) {
+                        playAlert('prep');
+                        playedAlerts.add(alertKey);
+                    }
+                }
+
+                if (remaining <= 2 && remaining > 0) {
+                    const reminderKey = `${row.id}-2min-reminder`;
+                    if (!playedAlerts.has(reminderKey)) {
+                        createStickyNote(null, "300px", "200px", "考試時間還剩2分鐘，請檢查班級、姓名是否有填寫，考卷內容請再檢查一遍。", true);
+                        playedAlerts.add(reminderKey);
+                    }
+                }
+
+                if(percent < 50) bar.style.backgroundColor = "#2ecc71";
+                else if(percent < 80) bar.style.backgroundColor = "#f1c40f";
+                else {
+                    bar.style.backgroundColor = "#e74c3c";
+                    textSpan.style.color = "white"; 
+                }
+            }
+            textSpan.textContent = statusText;
+        });
+    }
+    setInterval(updateProgressBars, 1000); 
+
+    // --- 8. 小工具邏輯 (拖曳等) ---
+    let isDragging = false;
+    let currentDragItem = null;
+    let offsetX, offsetY;
+    const GRID_SIZE = 20;
+
+    document.addEventListener('mousedown', (e) => {
+        const isLocked = appState.isLocked || currentUserRole === 'guest';
+        if(isLocked) return;
+        const target = e.target.closest('.draggable');
+        if(target && !e.target.classList.contains('close-btn') && e.target.tagName !== 'TEXTAREA' && e.target.contentEditable !== 'true') {
+            isDragging = true;
+            currentDragItem = target;
+            offsetX = e.clientX - target.offsetLeft;
+            offsetY = e.clientY - target.offsetTop;
+            target.style.zIndex = 100;
+        }
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging || !currentDragItem) return;
+        let x = e.clientX - offsetX;
+        let y = e.clientY - offsetY;
+        x = Math.round(x / GRID_SIZE) * GRID_SIZE;
+        y = Math.round(y / GRID_SIZE) * GRID_SIZE;
+        currentDragItem.style.left = `${x}px`;
+        currentDragItem.style.top = `${y}px`;
+    });
+    
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        if(currentDragItem) { currentDragItem.style.zIndex = 10; currentDragItem = null; }
+    });
+
+    const widgetArea = document.getElementById('widgetArea');
+    
+    function createWrapper(contentHTML, className = "", id = null, left="50px", top="100px", isSystemAction = false) {
+        if(!isSystemAction) {
+            if(appState.isLocked || currentUserRole !== 'admin') return null;
+        }
+        
+        const div = document.createElement('div');
+        div.className = `draggable ${className}`;
+        div.style.left = left;
+        div.style.top = top;
+        div.dataset.id = id || Date.now();
+        if(className.includes('clock-white')) div.dataset.type = 'clock-white';
+        else if(className.includes('clock-black')) div.dataset.type = 'clock-black';
+        else if(className.includes('analog')) div.dataset.type = 'analog';
+        div.innerHTML = `<div class="close-btn" onclick="this.parentElement.remove()">×</div>${contentHTML}`;
+        
+        if (appState.isLocked) {
+            div.classList.add('locked');
+            const inputs = div.querySelectorAll('textarea, [contenteditable]');
+            inputs.forEach(i => {
+                if(i.tagName === 'TEXTAREA') i.disabled = true;
+                else i.contentEditable = false;
+            });
+        }
+
+        widgetArea.appendChild(div);
+        return div;
+    }
+
+    function createStickyNote(id=null, left, top, content="", isSystemAction = false) {
+        const div = createWrapper(`<div class="sticky-note"><textarea placeholder="在此輸入筆記...">${content}</textarea></div>`, "", id, left, top, isSystemAction);
+        if(div) div.dataset.type = 'sticky';
+    }
+    
+    function createBulletin(id=null, left, top, title="今日公告", content="點擊編輯內容...") {
+        const div = createWrapper(`<div class="bulletin-board"><div class="bulletin-title" contenteditable="true">${title}</div><div class="bulletin-content" contenteditable="true">${content}</div></div>`, "", id, left, top);
+        if(div) div.dataset.type = 'bulletin';
+    }
+    function createDigitalClock(style, id=null, left, top) {
+        const div = createWrapper(`<div class="digital-clock clock-${style}">00:00:00</div>`, "", id, left, top);
+        if(!div) return;
+        const display = div.querySelector('.digital-clock');
+        function tick() { if(!document.body.contains(display)) return; display.textContent = new Date().toLocaleTimeString('zh-TW', { hour12: false }); requestAnimationFrame(tick); }
+        tick();
+    }
+    function createAnalogClock(id=null, left, top) {
+        let markersHTML = '';
+        for(let i=0; i<60; i++) {
+            const isHour = i % 5 === 0;
+            const rotation = i * 6;
+            const className = isHour ? 'clock-marker marker-hour' : 'clock-marker marker-minute';
+            markersHTML += `<div class="${className}" style="transform: translateX(-50%) rotate(${rotation}deg);"></div>`;
+        }
+
+        const html = `
+            <div class="analog-clock">
+                <div class="clock-branding">QUARTZ</div>
+                ${markersHTML}
+                <div class="hand hour-hand"></div>
+                <div class="hand min-hand"></div>
+                <div class="hand sec-hand"></div>
+                <div class="clock-center-cap"></div>
+            </div>
+        `;
+        
+        const div = createWrapper(html, "", id, left, top);
+        if(!div) return;
+        const hourHand = div.querySelector('.hour-hand');
+        const minHand = div.querySelector('.min-hand');
+        const secHand = div.querySelector('.sec-hand');
+        function tick() {
+            if(!document.body.contains(div)) return;
+            const now = new Date();
+            const s = now.getSeconds(); 
+            const m = now.getMinutes(); 
+            const h = now.getHours();
+            const secDeg = s * 6;
+            const minDeg = m * 6 + s * 0.1;
+            const hourDeg = (h % 12) * 30 + m * 0.5;
+            secHand.style.transform = `translateX(-50%) rotate(${secDeg}deg)`;
+            minHand.style.transform = `translateX(-50%) rotate(${minDeg}deg)`;
+            hourHand.style.transform = `translateX(-50%) rotate(${hourDeg}deg)`;
+            requestAnimationFrame(tick);
+        }
+        tick();
+    }
+    function restoreWidget(w) {
+        const wasLocked = appState.isLocked; const wasRole = currentUserRole;
+        appState.isLocked = false; currentUserRole = 'admin'; 
+        if (w.type === 'sticky') createStickyNote(w.id, w.left, w.top, w.content);
+        else if (w.type === 'bulletin') createBulletin(w.id, w.left, w.top, w.contentTitle, w.content);
+        else if (w.type === 'clock-white') createDigitalClock('white', w.id, w.left, w.top);
+        else if (w.type === 'clock-black') createDigitalClock('black', w.id, w.left, w.top);
+        else if (w.type === 'analog') createAnalogClock(w.id, w.left, w.top);
+        appState.isLocked = wasLocked; currentUserRole = wasRole;
+        if(currentUserRole === 'guest') updateWidgetLockState(true);
+    }
+</script>
+</body>
+</html>
